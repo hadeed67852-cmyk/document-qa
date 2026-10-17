@@ -1,5 +1,5 @@
 import streamlit as st
-import google.generativeai as genai
+from google import genai
 
 # Show title and description.
 st.title("📄 Document question answering")
@@ -15,40 +15,48 @@ if not gemini_api_key:
     st.info("Please add your Gemini API key to continue.", icon="🗝️")
 else:
 
-    # Configure the Gemini SDK client.
-    genai.configure(api_key=gemini_api_key)
+    # Configure the client standard for the modern SDK framework
+    try:
+        client = genai.Client(api_key=gemini_api_key)
+    except Exception as e:
+        st.error(f"Failed to initialize client: {e}")
+        client = None
 
-    # Let the user upload a file via `st.file_uploader`.
-    uploaded_file = st.file_uploader(
-        "Upload a document (.txt or .md)", type=("txt", "md")
-    )
+    if client:
+        # Let the user upload a file via `st.file_uploader`.
+        uploaded_file = st.file_uploader(
+            "Upload a document (.txt or .md)", type=("txt", "md")
+        )
 
-    # Ask the user for a question via `st.text_area`.
-    question = st.text_area(
-        "Now ask a question about the document!",
-        placeholder="Can you give me a short summary?",
-        disabled=not uploaded_file,
-    )
+        # Ask the user for a question via `st.text_area`.
+        question = st.text_area(
+            "Now ask a question about the document!",
+            placeholder="Can you give me a short summary?",
+            disabled=not uploaded_file,
+        )
 
-    if uploaded_file and question:
+        if uploaded_file and question:
 
-        # Process the uploaded file and question.
-        document = uploaded_file.read().decode()
-        
-        # Format the combined prompt context for Gemini
-        prompt = f"Here's a document: {document} \n\n---\n\n {question}"
+            # Process the uploaded file and question.
+            document = uploaded_file.read().decode()
+            
+            # Format the combined prompt context for Gemini
+            prompt = f"Here's a document: {document} \n\n---\n\n {question}"
 
-        # Initialize the updated Gemini 3.8 Flash model.
-        model = genai.GenerativeModel("gemini-3.8-flash")
+            # Stream the response natively to the app interface using the modern model API structures
+            try:
+                response_stream = client.models.generate_content_stream(
+                    model="gemini-3.8-flash",
+                    contents=prompt,
+                )
 
-        # Generate a streaming answer using the Gemini API.
-        response = model.generate_content(prompt, stream=True)
+                # Helper generator function to yield text chunks out of the stream object
+                def stream_chunks(stream):
+                    for chunk in stream:
+                        if chunk.text:
+                            yield chunk.text
 
-        # Helper function to yield text chunks out of the Gemini object stream
-        def stream_chunks(response_stream):
-            for chunk in response_stream:
-                if chunk.text:
-                    yield chunk.text
-
-        # Stream the response natively to the app interface.
-        st.write_stream(stream_chunks(response))
+                st.write_stream(stream_chunks(response_stream))
+                
+            except Exception as api_err:
+                st.error(f"Gemini API request failed: {api_err}")
