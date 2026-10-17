@@ -1,23 +1,22 @@
 import streamlit as st
-from openai import OpenAI
+import google.generativeai as genai
 
 # Show title and description.
 st.title("📄 Document question answering")
 st.write(
-    "Upload a document below and ask a question about it – GPT will answer! "
-    "To use this app, you need to provide an OpenAI API key, which you can get [here](https://platform.openai.com/account/api-keys). "
+    "Upload a document below and ask a question about it – Gemini 3.8 will answer! "
+    "To use this app, you need to provide a Google Gemini API key, which you can get "
+    "[here](https://aistudio.google.com/). "
 )
 
-# Ask user for their OpenAI API key via `st.text_input`.
-# Alternatively, you can store the API key in `./.streamlit/secrets.toml` and access it
-# via `st.secrets`, see https://docs.streamlit.io/develop/concepts/connections/secrets-management
-openai_api_key = st.text_input("OpenAI API Key", type="password")
-if not openai_api_key:
-    st.info("Please add your OpenAI API key to continue.", icon="🗝️")
+# Ask user for their Gemini API key via `st.text_input`.
+gemini_api_key = st.text_input("Gemini API Key", type="password")
+if not gemini_api_key:
+    st.info("Please add your Gemini API key to continue.", icon="🗝️")
 else:
 
-    # Create an OpenAI client.
-    client = OpenAI(api_key=openai_api_key)
+    # Configure the Gemini SDK client.
+    genai.configure(api_key=gemini_api_key)
 
     # Let the user upload a file via `st.file_uploader`.
     uploaded_file = st.file_uploader(
@@ -35,19 +34,21 @@ else:
 
         # Process the uploaded file and question.
         document = uploaded_file.read().decode()
-        messages = [
-            {
-                "role": "user",
-                "content": f"Here's a document: {document} \n\n---\n\n {question}",
-            }
-        ]
+        
+        # Format the combined prompt context for Gemini
+        prompt = f"Here's a document: {document} \n\n---\n\n {question}"
 
-        # Generate an answer using the OpenAI API.
-        stream = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=messages,
-            stream=True,
-        )
+        # Initialize the updated Gemini 3.8 Flash model.
+        model = genai.GenerativeModel("gemini-3.8-flash")
 
-        # Stream the response to the app using `st.write_stream`.
-        st.write_stream(stream)
+        # Generate a streaming answer using the Gemini API.
+        response = model.generate_content(prompt, stream=True)
+
+        # Helper function to yield text chunks out of the Gemini object stream
+        def stream_chunks(response_stream):
+            for chunk in response_stream:
+                if chunk.text:
+                    yield chunk.text
+
+        # Stream the response natively to the app interface.
+        st.write_stream(stream_chunks(response))
