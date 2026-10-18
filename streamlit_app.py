@@ -39,7 +39,7 @@ else:
         prompt = f"Here's a document: {document} \n\n---\n\n {question}"
 
         # Switched to the production-supported stable standard model
-        model = genai.GenerativeModel("gemini-2.5-flash")
+        model = genai.GenerativeModel("gemini-3.8-flash")
 
         # Generate a streaming answer using the Gemini API.
         try:
