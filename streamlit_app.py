@@ -2,7 +2,7 @@ import streamlit as st
 import google.generativeai as genai
 
 # Show title and description.
-st.title("📄 Document question answering")
+st.title("Quranic AI assistant")
 st.write(
     "Upload a document below and ask a question about it – Gemini will answer! "
     "To use this app, you need to provide a Google Gemini API key, which you can get "
